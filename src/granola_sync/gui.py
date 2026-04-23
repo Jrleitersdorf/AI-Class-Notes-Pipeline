@@ -43,7 +43,10 @@ def _run_in_thread(fn, on_done=None):
         if on_done:
             root = tk._default_root  # noqa: SLF001
             if root:
-                root.after(0, lambda: on_done(result, error))
+                try:
+                    root.after(0, lambda: on_done(result, error))
+                except Exception:
+                    pass  # window was closed before the thread finished
     t = threading.Thread(target=target, daemon=True)
     t.start()
 

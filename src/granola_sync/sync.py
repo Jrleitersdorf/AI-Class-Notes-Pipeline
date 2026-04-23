@@ -88,6 +88,7 @@ def note_to_markdown(note: dict) -> str:
     attendees_line = ", ".join(filter(None, attendee_names)) or "—"
 
     summary_md = (note.get("summary_markdown") or note.get("summary_text") or "").strip()
+    summary_section = summary_md if summary_md else "_No notes available._"
     transcript_md = _format_transcript(note.get("transcript"))
 
     return (
@@ -98,7 +99,7 @@ def note_to_markdown(note: dict) -> str:
         f"\n"
         f"## Notes\n"
         f"\n"
-        f"{summary_md}\n"
+        f"{summary_section}\n"
         f"\n"
         f"---\n"
         f"\n"
