@@ -93,6 +93,10 @@ class GranolaClient:
             if not data.get("hasMore"):
                 break
             cursor = data.get("cursor")
+            if not cursor:
+                # hasMore=True but no cursor — API contract violated; stop to avoid
+                # an infinite loop re-fetching the same page.
+                break
 
     def get_note(self, note_id: str, *, include_transcript: bool = True) -> dict:
         """

@@ -35,7 +35,6 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Literal
 
 from .granola_client import GranolaClient
@@ -48,8 +47,8 @@ from .state import load_state, save_state, is_synced, mark_synced, _DEFAULT_STAT
 # ------------------------------------------------------------------
 
 def _sanitize_filename(name: str) -> str:
-    """Replace characters not allowed in filenames."""
-    return re.sub(r'[/\\:*?"<>|]', "-", name).strip()
+    """Replace characters not allowed in filenames and strip edge whitespace/dashes."""
+    return re.sub(r'[/\\:*?"<>|]', "-", name).strip(" -") or "Untitled"
 
 
 def _format_transcript(transcript: list[dict] | None) -> str:
@@ -89,6 +88,7 @@ def note_to_markdown(note: dict) -> str:
     attendees_line = ", ".join(filter(None, attendee_names)) or "—"
 
     summary_md = (note.get("summary_markdown") or note.get("summary_text") or "").strip()
+    summary_section = summary_md if summary_md else "_No notes available._"
     transcript_md = _format_transcript(note.get("transcript"))
 
     return (
@@ -99,7 +99,7 @@ def note_to_markdown(note: dict) -> str:
         f"\n"
         f"## Notes\n"
         f"\n"
-        f"{summary_md}\n"
+        f"{summary_section}\n"
         f"\n"
         f"---\n"
         f"\n"

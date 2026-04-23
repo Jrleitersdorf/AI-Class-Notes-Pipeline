@@ -1,15 +1,15 @@
 """
-granola-sync — sync Granola meeting notes to local Markdown files.
+granola_sync — sync Granola meeting notes to local Markdown files.
 
 Quick start::
 
-    import src as granola_sync
+    import granola_sync
 
-    # Store your API key once
+    # Store your API key once (get it from Granola desktop → Settings → API)
     granola_sync.set_api_key("grn_...")
 
     # Discover your Granola folders
-    from src.granola_client import GranolaClient
+    from granola_sync import GranolaClient
     client = GranolaClient("grn_...")
     folders = client.list_folders()
     # [{"id": "fol_xxx", "name": "CS101 Lectures"}, ...]
