@@ -15,7 +15,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .granola_client import GranolaClient, GranolaAPIError
+from .granola_client import GranolaClient
 from .mappings import (
     create_mapping,
     list_mappings,
