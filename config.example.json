@@ -1,0 +1,15 @@
+{
+  "granola_api_key": "grn_YOUR_API_KEY_HERE",
+  "mappings": [
+    {
+      "folder_id": "fol_4y6LduVdwSKC27",
+      "folder_name": "CS101 Lectures",
+      "local_path": "/Users/you/Notes/CS101"
+    },
+    {
+      "folder_id": "fol_9kLmPqRsTuVwXy",
+      "folder_name": "Algorithms Recitations",
+      "local_path": "/Users/you/Notes/Algorithms"
+    }
+  ]
+}
