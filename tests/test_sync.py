@@ -77,19 +77,62 @@ def test_format_transcript_whitespace_only_entries():
     assert _format_transcript(items) == "_No transcript available._"
 
 
-def test_format_transcript_uses_source_label():
+def test_format_transcript_lecture_strips_labels():
+    """Single-microphone lecture: no speaker labels, plain prose."""
     items = [{"speaker": {"source": "microphone"}, "text": "Hello.",
               "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:01:00Z"}]
     result = _format_transcript(items)
-    assert "**[microphone]**: Hello." in result
+    assert "Hello." in result
+    assert "[microphone]" not in result
+    assert "**" not in result
 
 
-def test_format_transcript_prefers_diarization_label():
+def test_format_transcript_lecture_merges_fragments():
+    """Consecutive lecture utterances within the gap threshold join into one paragraph."""
+    items = [
+        {"speaker": {"source": "microphone"}, "text": "First sentence.",
+         "start_time": "2026-01-01T00:00:00.000Z", "end_time": "2026-01-01T00:00:02.000Z"},
+        {"speaker": {"source": "microphone"}, "text": "Second sentence.",
+         "start_time": "2026-01-01T00:00:03.000Z", "end_time": "2026-01-01T00:00:05.000Z"},
+    ]
+    result = _format_transcript(items)
+    assert result == "First sentence. Second sentence."
+
+
+def test_format_transcript_lecture_splits_on_gap():
+    """A gap >= 8 s in a lecture creates a new paragraph."""
+    items = [
+        {"speaker": {"source": "microphone"}, "text": "Topic one.",
+         "start_time": "2026-01-01T00:00:00.000Z", "end_time": "2026-01-01T00:00:02.000Z"},
+        {"speaker": {"source": "microphone"}, "text": "Topic two.",
+         "start_time": "2026-01-01T00:00:12.000Z", "end_time": "2026-01-01T00:00:14.000Z"},
+    ]
+    result = _format_transcript(items)
+    assert result == "Topic one.\n\nTopic two."
+
+
+def test_format_transcript_conversation_uses_diarization_label():
+    """Diarization labels present → conversation mode with labels shown."""
     items = [{"speaker": {"source": "microphone", "diarization_label": "Speaker A"},
               "text": "Hi.", "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:01:00Z"}]
     result = _format_transcript(items)
     assert "**Speaker A**: Hi." in result
     assert "[microphone]" not in result
+
+
+def test_format_transcript_conversation_merges_same_speaker():
+    """Consecutive utterances from the same speaker are joined into one block."""
+    items = [
+        {"speaker": {"source": "microphone", "diarization_label": "Speaker A"},
+         "text": "Hello.", "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:00:01Z"},
+        {"speaker": {"source": "microphone", "diarization_label": "Speaker A"},
+         "text": "How are you?", "start_time": "2026-01-01T00:00:02Z", "end_time": "2026-01-01T00:00:03Z"},
+        {"speaker": {"source": "speaker", "diarization_label": "Speaker B"},
+         "text": "Good thanks.", "start_time": "2026-01-01T00:00:04Z", "end_time": "2026-01-01T00:00:05Z"},
+    ]
+    result = _format_transcript(items)
+    assert "**Speaker A**: Hello. How are you?" in result
+    assert "**Speaker B**: Good thanks." in result
 
 
 # ---------------------------------------------------------------------------

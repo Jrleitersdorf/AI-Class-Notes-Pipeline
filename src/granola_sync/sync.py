@@ -48,24 +48,115 @@ from .state import load_state, save_state, is_synced, mark_synced, _DEFAULT_STAT
 
 def _sanitize_filename(name: str) -> str:
     """Replace characters not allowed in filenames and strip edge whitespace/dashes."""
-    return re.sub(r'[/\\:*?"<>|]', "-", name).strip(" -") or "Untitled"
+    # Also replace newlines/tabs that can appear in Granola note titles
+    sanitized = re.sub(r'[/\\:*?"<>|\n\r\t]', "-", name)
+    return sanitized.strip(" -") or "Untitled"
+
+
+# ---------------------------------------------------------------------------
+# Transcript formatting helpers
+# ---------------------------------------------------------------------------
+
+_PARAGRAPH_GAP_SECONDS = 8.0  # silence gap that triggers a new paragraph
+
+
+def _ts_to_seconds(ts: str) -> float | None:
+    """Parse an ISO-8601 UTC timestamp to seconds-since-epoch, or None on error."""
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except Exception:
+        return None
+
+
+def _format_lecture(items: list[dict]) -> str:
+    """
+    Format a single-speaker (lecture) transcript as plain prose paragraphs.
+
+    Speaker labels are dropped entirely.  Consecutive utterances are joined
+    into the same paragraph; a gap of ``_PARAGRAPH_GAP_SECONDS`` or more
+    between the end of one utterance and the start of the next starts a new
+    paragraph.
+    """
+    paragraphs: list[list[str]] = [[]]
+    prev_end: float | None = None
+
+    for item in items:
+        text = item.get("text", "").strip()
+        if not text:
+            continue
+        start = _ts_to_seconds(item.get("start_time", ""))
+        end   = _ts_to_seconds(item.get("end_time", ""))
+
+        if prev_end is not None and start is not None:
+            if start - prev_end >= _PARAGRAPH_GAP_SECONDS:
+                paragraphs.append([])
+
+        paragraphs[-1].append(text)
+        if end is not None:
+            prev_end = end
+
+    parts = [" ".join(sentences) for sentences in paragraphs if sentences]
+    return "\n\n".join(parts) if parts else "_No transcript available._"
+
+
+def _format_conversation(items: list[dict]) -> str:
+    """
+    Format a multi-speaker (Zoom/seminar) transcript as a labelled dialogue.
+
+    Consecutive utterances from the same speaker are merged into one block.
+    The local microphone without a diarization label is shown as **You**.
+    """
+    def _label(item: dict) -> str:
+        sp = item.get("speaker", {})
+        dl = sp.get("diarization_label")
+        if dl:
+            return dl
+        return "You" if sp.get("source") == "microphone" else sp.get("source", "Speaker")
+
+    # Merge consecutive same-speaker runs
+    runs: list[tuple[str, list[str]]] = []
+    for item in items:
+        text = item.get("text", "").strip()
+        if not text:
+            continue
+        lbl = _label(item)
+        if runs and runs[-1][0] == lbl:
+            runs[-1][1].append(text)
+        else:
+            runs.append((lbl, [text]))
+
+    lines = [f"**{lbl}**: {' '.join(sentences)}" for lbl, sentences in runs]
+    return "\n\n".join(lines) if lines else "_No transcript available._"
 
 
 def _format_transcript(transcript: list[dict] | None) -> str:
-    """Convert transcript array to a readable Markdown block."""
+    """
+    Convert a Granola transcript array to an LLM-friendly Markdown block.
+
+    * If every utterance comes from a single microphone with no diarization
+      (i.e. a lecture recording), speaker labels are dropped and the text is
+      merged into time-gap-delimited prose paragraphs.
+    * If diarization labels are present (Zoom / seminar with multiple
+      speakers), the transcript is formatted as a labelled dialogue with
+      consecutive same-speaker runs merged together.
+    """
     if not transcript:
         return "_No transcript available._"
 
-    lines: list[str] = []
-    for item in transcript:
-        source = item.get("speaker", {}).get("source", "unknown")
-        label = item.get("speaker", {}).get("diarization_label")
-        speaker = label if label else f"[{source}]"
-        text = item.get("text", "").strip()
-        if text:
-            lines.append(f"**{speaker}**: {text}")
+    items = [i for i in transcript if i.get("text", "").strip()]
+    if not items:
+        return "_No transcript available._"
 
-    return "\n\n".join(lines) if lines else "_No transcript available._"
+    has_diarization = any(
+        i.get("speaker", {}).get("diarization_label") for i in items
+    )
+
+    if has_diarization:
+        return _format_conversation(items)
+    else:
+        return _format_lecture(items)
 
 
 def note_to_markdown(note: dict) -> str:
