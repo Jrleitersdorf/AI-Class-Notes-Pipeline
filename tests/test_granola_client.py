@@ -110,17 +110,20 @@ def test_iter_notes_infinite_loop_guard(client):
 # ---------------------------------------------------------------------------
 
 def test_list_folders_deduplicates(client):
-    notes = [
-        {"id": "not_1", "folder_membership": [
+    # list endpoint returns bare summaries (no folder_membership) — must fetch full note
+    summaries = [{"id": "not_1"}, {"id": "not_2"}]
+    full_notes = {
+        "not_1": {"id": "not_1", "folder_membership": [
             {"id": "fol_aaa", "object": "folder", "name": "CS101"},
             {"id": "fol_bbb", "object": "folder", "name": "Algorithms"},
         ]},
-        {"id": "not_2", "folder_membership": [
+        "not_2": {"id": "not_2", "folder_membership": [
             {"id": "fol_aaa", "object": "folder", "name": "CS101"},  # duplicate
         ]},
-    ]
-    with patch.object(client, "iter_notes", return_value=iter(notes)):
-        folders = client.list_folders()
+    }
+    with patch.object(client, "iter_notes", return_value=iter(summaries)):
+        with patch.object(client, "get_note", side_effect=lambda nid, **kw: full_notes[nid]):
+            folders = client.list_folders()
     assert len(folders) == 2
     ids = {f["id"] for f in folders}
     assert ids == {"fol_aaa", "fol_bbb"}
@@ -132,9 +135,11 @@ def test_list_folders_empty_when_no_notes(client):
 
 
 def test_list_folders_skips_notes_with_no_folders(client):
-    notes = [{"id": "not_1", "folder_membership": []}]
-    with patch.object(client, "iter_notes", return_value=iter(notes)):
-        assert client.list_folders() == []
+    summaries = [{"id": "not_1"}]
+    full_note = {"id": "not_1", "folder_membership": []}
+    with patch.object(client, "iter_notes", return_value=iter(summaries)):
+        with patch.object(client, "get_note", return_value=full_note):
+            assert client.list_folders() == []
 
 
 # ---------------------------------------------------------------------------
@@ -142,18 +147,22 @@ def test_list_folders_skips_notes_with_no_folders(client):
 # ---------------------------------------------------------------------------
 
 def test_list_notes_in_folder_filters_correctly(client):
-    notes = [
-        {"id": "not_1", "folder_membership": [{"id": "fol_aaa"}]},
-        {"id": "not_2", "folder_membership": [{"id": "fol_bbb"}]},
-        {"id": "not_3", "folder_membership": [{"id": "fol_aaa"}, {"id": "fol_bbb"}]},
-    ]
-    with patch.object(client, "iter_notes", return_value=iter(notes)):
-        result = list(client.list_notes_in_folder("fol_aaa"))
+    summaries = [{"id": "not_1"}, {"id": "not_2"}, {"id": "not_3"}]
+    full_notes = {
+        "not_1": {"id": "not_1", "folder_membership": [{"id": "fol_aaa"}]},
+        "not_2": {"id": "not_2", "folder_membership": [{"id": "fol_bbb"}]},
+        "not_3": {"id": "not_3", "folder_membership": [{"id": "fol_aaa"}, {"id": "fol_bbb"}]},
+    }
+    with patch.object(client, "iter_notes", return_value=iter(summaries)):
+        with patch.object(client, "get_note", side_effect=lambda nid, **kw: full_notes[nid]):
+            result = list(client.list_notes_in_folder("fol_aaa"))
     assert [n["id"] for n in result] == ["not_1", "not_3"]
 
 
 def test_list_notes_in_folder_empty_result(client):
-    notes = [{"id": "not_1", "folder_membership": [{"id": "fol_bbb"}]}]
-    with patch.object(client, "iter_notes", return_value=iter(notes)):
-        result = list(client.list_notes_in_folder("fol_aaa"))
+    summaries = [{"id": "not_1"}]
+    full_note = {"id": "not_1", "folder_membership": [{"id": "fol_bbb"}]}
+    with patch.object(client, "iter_notes", return_value=iter(summaries)):
+        with patch.object(client, "get_note", return_value=full_note):
+            result = list(client.list_notes_in_folder("fol_aaa"))
     assert result == []

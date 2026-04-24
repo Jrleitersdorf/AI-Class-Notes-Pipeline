@@ -118,17 +118,22 @@ class GranolaClient:
         """
         Return a deduplicated list of all Folder objects visible to this key.
 
-        Folders are discovered by iterating every note and collecting unique
-        ``folder_membership`` entries — the API has no dedicated folder list
-        endpoint.
+        Folders are discovered by fetching each note's full detail — the
+        ``GET /v1/notes`` list endpoint does not include ``folder_membership``
+        in its summary objects.
 
         Each folder dict has keys: ``id``, ``object``, ``name``.
         """
         seen: dict[str, dict] = {}
         for note in self.iter_notes():
-            for folder in note.get("folder_membership", []):
-                if folder["id"] not in seen:
-                    seen[folder["id"]] = folder
+            try:
+                full = self.get_note(note["id"], include_transcript=False)
+            except GranolaAPIError:
+                continue  # note still processing or unavailable — skip
+            for folder in full.get("folder_membership") or []:
+                fid = folder.get("id")
+                if fid and fid not in seen:
+                    seen[fid] = folder
         return list(seen.values())
 
     def list_notes_in_folder(
@@ -138,12 +143,21 @@ class GranolaClient:
         updated_after: str | None = None,
     ) -> Iterator[dict]:
         """
-        Yield NoteSummary objects that belong to ``folder_id``.
+        Yield full Note objects that belong to ``folder_id``.
 
-        Optionally pass ``updated_after`` (ISO-8601) to restrict to recently
-        changed notes.
+        The ``GET /v1/notes`` list endpoint does not include
+        ``folder_membership`` in summary objects, so each note's full detail
+        is fetched to perform the folder filter.  Notes that are unavailable
+        (e.g. still processing) are silently skipped and will be retried on
+        the next sync run.
         """
         for note in self.iter_notes(updated_after=updated_after):
-            memberships = [f["id"] for f in note.get("folder_membership", [])]
+            try:
+                full = self.get_note(note["id"], include_transcript=False)
+            except GranolaAPIError:
+                continue
+            memberships = [
+                f["id"] for f in (full.get("folder_membership") or []) if f.get("id")
+            ]
             if folder_id in memberships:
-                yield note
+                yield full
