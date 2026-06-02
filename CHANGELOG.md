@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 _(no unreleased changes)_
 
+## [1.2.0] — 2026-06-02
+
+### Added
+- Persistent folder cache: discovered Granola folders are saved to `.folders.json` at the project root and shown instantly when the GUI opens. The Setup tab's "Discover Folders" button is now "Refresh Folders" — it re-fetches from the API and overwrites the cache. Status label shows when folders were last refreshed (e.g. "10 folder(s) · refreshed 2 hr ago").
+- New library helpers: `load_folder_cache`, `save_folder_cache`, `refresh_folder_cache`.
+- 9 new tests for the folder cache (load/save round-trip, corrupted-file degradation, refresh propagation, parent-dir creation), bringing the suite to 85 tests.
+
+### Notes
+- Mitigates (does not yet resolve) [TD-001](docs/tech-debt.md): the underlying O(N) API call still runs on refresh. A future per-note incremental-refresh cache would eliminate it entirely.
+
 ## [1.1.0] — 2026-04-24
 
 ### Added
@@ -32,6 +42,7 @@ Initial release of the `granola_sync` Python package.
 - 73-test pytest suite covering all four modules.
 - Fetch full note detail to populate `folder_membership` — the `GET /v1/notes` list endpoint omits it, so `list_folders()` and `list_notes_in_folder()` fetch each note individually to discover folder membership.
 
-[Unreleased]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.0.0

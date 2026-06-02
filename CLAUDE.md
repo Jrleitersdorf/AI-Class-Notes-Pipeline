@@ -15,6 +15,7 @@ src/
     granola_client.py  — Granola REST API client
     mappings.py        — CRUD for folder → local-path mappings (config.json)
     state.py           — sync state tracker (.state.json, skip unchanged notes)
+    folder_cache.py    — persistent cache of discovered folders (.folders.json)
     sync.py            — sync logic: fetch → convert → write
 tests/
   __init__.py          — placeholder; add test files here

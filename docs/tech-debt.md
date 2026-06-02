@@ -11,7 +11,8 @@ This file tracks **systemic** debt — architectural shortcuts, cross-cutting co
 ### TD-001 — `list_folders()` and `list_notes_in_folder()` are O(N) API calls
 - **Impact**: a user with 200 notes triggers ~200 `GET /v1/notes/{id}` calls every time Discover Folders runs or a sync starts. At the API's rate limit (5 req/s sustained) that's ~40 s just to build the folder list.
 - **Why**: the `GET /v1/notes` list endpoint does not return `folder_membership` in note summaries, so each note's full detail must be fetched to learn which folder it belongs to. Verified against the real API on 2026-04-24.
-- **Possible mitigation**: local cache `note_id → (folder_ids, updated_at)`; only refetch when `updated_at` changes. Would require a new on-disk cache file (separate from `.state.json` which tracks sync state, not folder membership).
+- **Status**: **partially mitigated in v1.2.0** by `folder_cache.py` — discovered folders are persisted to `.folders.json` so the GUI shows them instantly on launch. The underlying O(N) call still runs whenever the user clicks "Refresh Folders" or `refresh_folder_cache()` is invoked. Not yet resolved for the sync path (`list_notes_in_folder` still re-scans).
+- **Remaining fix**: per-note cache `note_id → (folder_ids, updated_at)`; only refetch when `updated_at` changes. Would eliminate the cost on both refresh and sync paths.
 
 ### TD-002 — No integration tests against the real Granola API
 - **Impact**: regressions in the REST client (auth header format, endpoint paths, pagination contract, field renames) land silently until a user reports.

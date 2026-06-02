@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+.venv/
+venv/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Runtime config & state (per-user, never committed)
+config.json
+.state.json
+.folders.json
+
+# User test artifacts
+tests/Mapping tests/
+
+# Claude Code session data
+.claude/

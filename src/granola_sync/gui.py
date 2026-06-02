@@ -15,6 +15,8 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from datetime import datetime, timezone
+
 from .granola_client import GranolaClient
 from .mappings import (
     create_mapping,
@@ -25,7 +27,30 @@ from .mappings import (
     get_api_key,
     set_api_key,
 )
+from .folder_cache import load_folder_cache, refresh_folder_cache
 from .sync import sync_all, sync_dry_run
+
+
+def _format_relative_time(iso_ts: str | None) -> str:
+    """Render an ISO-8601 UTC timestamp as a friendly relative string."""
+    if not iso_ts:
+        return "never"
+    try:
+        when = datetime.fromisoformat(iso_ts)
+    except ValueError:
+        return iso_ts
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    delta = datetime.now(timezone.utc) - when
+    secs = int(delta.total_seconds())
+    if secs < 60:
+        return "just now"
+    if secs < 3600:
+        return f"{secs // 60} min ago"
+    if secs < 86400:
+        return f"{secs // 3600} hr ago"
+    days = secs // 86400
+    return f"{days} day{'s' if days != 1 else ''} ago"
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +124,7 @@ class SetupTab(ttk.Frame):
         ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
         self._discover_btn = ttk.Button(
-            self, text="Discover Folders", command=self._discover
+            self, text="Refresh Folders", command=self._discover
         )
         self._discover_btn.grid(row=6, column=0, sticky="w")
 
@@ -120,6 +145,31 @@ class SetupTab(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(7, weight=1)
 
+        # Populate from persistent cache so folders show instantly on launch
+        self._load_cached_folders()
+
+    def _load_cached_folders(self):
+        """Populate the tree from `.folders.json` on disk, if it exists."""
+        cache = load_folder_cache()
+        folders = cache.get("folders") or []
+        for f in folders:
+            self._tree.insert("", "end", values=(f["id"], f.get("name", "")))
+        self.app.discovered_folders = folders
+        self._update_status(folders, cache.get("refreshed_at"))
+
+    def _update_status(self, folders: list[dict], refreshed_at: str | None):
+        if not folders:
+            self._status_label.config(
+                text="No folders cached yet — click Refresh Folders.",
+                foreground="gray",
+            )
+            return
+        when = _format_relative_time(refreshed_at)
+        self._status_label.config(
+            text=f"{len(folders)} folder(s) · refreshed {when}",
+            foreground="gray",
+        )
+
     def _save_key(self):
         key = self._key_var.get().strip()
         if not key:
@@ -135,25 +185,24 @@ class SetupTab(ttk.Frame):
             messagebox.showwarning("No API key", "Enter and save your API key first.")
             return
         self._discover_btn.config(state="disabled")
-        self._status_label.config(text="Fetching folders…")
+        self._status_label.config(text="Refreshing folders from Granola…", foreground="gray")
         self._tree.delete(*self._tree.get_children())
 
         def fetch():
             client = GranolaClient(key)
-            return client.list_folders()
+            return refresh_folder_cache(client)
 
-        def done(folders, error):
+        def done(result, error):
             self._discover_btn.config(state="normal")
             if error:
                 self._status_label.config(text=f"Error: {error}", foreground="red")
                 return
-            folders = folders or []
+            folders = (result or {}).get("folders") or []
+            refreshed_at = (result or {}).get("refreshed_at")
             for f in folders:
                 self._tree.insert("", "end", values=(f["id"], f.get("name", "")))
-            self._status_label.config(
-                text=f"{len(folders)} folder(s) found.", foreground="gray"
-            )
             self.app.discovered_folders = folders
+            self._update_status(folders, refreshed_at)
 
         _run_in_thread(fetch, done)
 
