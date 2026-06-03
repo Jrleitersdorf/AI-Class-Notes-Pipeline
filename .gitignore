@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+.venv/
+venv/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Runtime config & state (per-user, never committed)
+config.json
+.state.json
+.folders.json
+
+# User test artifacts
+tests/Mapping tests/
+
+# Claude Code session data
+.claude/
+
+# Superpowers brainstorm sessions (mockup HTML, not committed)
+.superpowers/
+
+# V2 frontend (Vite + React) — bundled output and node_modules
+frontend/node_modules/
+frontend/dist/
