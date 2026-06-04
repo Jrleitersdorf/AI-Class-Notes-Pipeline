@@ -508,7 +508,7 @@ def _find_frontend_index() -> Path | None:
     here = Path(__file__).resolve().parent
     candidates = [
         here / "_frontend" / "index.html",                                # wheel install
-        here.parent.parent.parent / "frontend" / "dist" / "index.html",   # editable dev install
+        here.parent.parent / "frontend" / "dist" / "index.html",          # editable dev install
     ]
     for c in candidates:
         if c.exists():
