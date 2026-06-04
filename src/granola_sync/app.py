@@ -11,6 +11,7 @@ CLI entry point. The legacy Tkinter GUI is reachable via ``--tkinter``.
 
 from __future__ import annotations
 
+import time
 from importlib import metadata
 from pathlib import Path
 
@@ -18,6 +19,7 @@ import webview
 
 from . import folder_cache as _folder_cache
 from . import mappings as _mappings
+from . import state as _state
 from .folder_cache import load_folder_cache, refresh_folder_cache
 from .granola_client import GranolaClient
 from .mappings import (
@@ -28,6 +30,8 @@ from .mappings import (
     set_api_key,
     update_mapping,
 )
+from .progress import SyncProgressRunner
+from .sync import sync_all, sync_dry_run, sync_folder
 
 
 _PACKAGE_NAME = "granola_sync"
@@ -49,6 +53,14 @@ def _find_frontend_index() -> Path | None:
 
 class Api:
     """JS-callable bridge surface."""
+
+    # Created lazily once a window exists
+    _runner: SyncProgressRunner | None = None
+
+    def _get_runner(self) -> SyncProgressRunner | None:
+        if self._runner is None and webview.windows:
+            self._runner = SyncProgressRunner(webview.windows[0])
+        return self._runner
 
     # ---------- App control ----------
 
@@ -128,6 +140,104 @@ class Api:
             return None
         # create_file_dialog returns a tuple of strings
         return result[0] if isinstance(result, (list, tuple)) else result
+
+    # ---------- Sync ----------
+
+    def sync_dry_run(self) -> list[dict]:
+        """Return what would be written, without writing anything."""
+        results = sync_dry_run(
+            config_path=_mappings._DEFAULT_CONFIG_PATH,
+            state_path=_state._DEFAULT_STATE_PATH,
+        )
+        return [
+            {
+                "folder_id": r.folder_id,
+                "folder_name": r.folder_name,
+                "local_path": r.local_path,
+                "written": r.written,
+                "skipped": r.skipped,
+                "errors": r.errors,
+                "notes": [
+                    {"note_id": n.note_id, "title": n.title,
+                     "status": n.status, "file_path": n.file_path,
+                     "error": n.error}
+                    for n in r.notes
+                ],
+            }
+            for r in results
+        ]
+
+    def start_sync(self, folder_id: str | None = None) -> str:
+        """Kick off a sync in a background thread. See spec for event schema."""
+        runner = self._get_runner()
+        if runner is None:
+            raise RuntimeError("No webview window available.")
+
+        def task(emit, is_cancelled=lambda: False):
+            t0 = time.time()
+            try:
+                if folder_id:
+                    results = sync_folder(
+                        folder_id,
+                        config_path=_mappings._DEFAULT_CONFIG_PATH,
+                        state_path=_state._DEFAULT_STATE_PATH,
+                    )
+                else:
+                    results = sync_all(
+                        config_path=_mappings._DEFAULT_CONFIG_PATH,
+                        state_path=_state._DEFAULT_STATE_PATH,
+                    )
+                if isinstance(results, list):
+                    folder_results = results
+                else:
+                    folder_results = [results]
+
+                written = skipped = errors = 0
+                for r in folder_results:
+                    for note in r.notes:
+                        if is_cancelled():
+                            return
+                        emit({
+                            "type": "note",
+                            "sync_id": "",   # filled in below
+                            "folder_id": r.folder_id,
+                            "status": note.status,
+                            "note_id": note.note_id,
+                            "title": note.title,
+                            "file_path": note.file_path,
+                            "error": note.error,
+                        })
+                    emit({
+                        "type": "folder_done",
+                        "sync_id": "",
+                        "folder_id": r.folder_id,
+                        "folder_name": r.folder_name,
+                        "written": r.written,
+                        "skipped": r.skipped,
+                        "errors": r.errors,
+                    })
+                    written += r.written
+                    skipped += r.skipped
+                    errors += r.errors
+
+                emit({
+                    "type": "done",
+                    "sync_id": "",
+                    "written": written,
+                    "skipped": skipped,
+                    "errors": errors,
+                    "elapsed_ms": int((time.time() - t0) * 1000),
+                })
+            except Exception as exc:
+                emit({"type": "error", "sync_id": "", "message": str(exc)})
+
+        return runner.start(task)
+
+    def cancel_sync(self, sync_id: str) -> bool:
+        runner = self._get_runner()
+        if runner is None:
+            return False
+        return runner.cancel(sync_id)
 
 
 def launch(*, dev_url: str | None = None) -> None:

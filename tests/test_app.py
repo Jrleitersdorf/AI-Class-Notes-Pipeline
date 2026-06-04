@@ -147,3 +147,43 @@ def test_pick_folder_returns_none_on_cancel(api):
 def test_pick_folder_no_window_returns_none(api):
     with patch.object(webview, "windows", []):
         assert api.pick_folder() is None
+
+
+# ---------------------------------------------------------------------------
+# Sync
+# ---------------------------------------------------------------------------
+
+def test_sync_dry_run_returns_serializable_results(api, tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH", str(cfg))
+    # No mappings configured → empty list
+    assert api.sync_dry_run() == []
+
+
+def test_start_sync_returns_sync_id_and_streams_done(api, tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH", str(cfg))
+    monkeypatch.setattr("granola_sync.state._DEFAULT_STATE_PATH",
+                        str(tmp_path / ".state.json"))
+    api.set_api_key("grn_testkey")
+    fake_window = MagicMock()
+    with patch.object(webview, "windows", [fake_window]):
+        sync_id = api.start_sync()
+    assert isinstance(sync_id, str) and len(sync_id) > 0
+
+    # The runner should have emitted a 'done' event with 0 counts
+    import time
+    deadline = time.time() + 2.0
+    while time.time() < deadline:
+        if any('"type": "done"' in c[0][0]
+               for c in fake_window.evaluate_js.call_args_list):
+            return
+        time.sleep(0.02)
+    pytest.fail("sync 'done' event was not emitted in 2s")
+
+
+def test_cancel_sync_returns_bool(api):
+    fake_window = MagicMock()
+    with patch.object(webview, "windows", [fake_window]):
+        # Cancelling an unknown sync_id returns False
+        assert api.cancel_sync("not-a-real-id") is False
