@@ -11,6 +11,10 @@ license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "requests>=2.31.0",
+    "pywebview>=5.0",
+    # macOS WebKit backend for pywebview:
+    "pyobjc-core>=10.0 ; sys_platform == 'darwin'",
+    "pyobjc-framework-WebKit>=10.0 ; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]
