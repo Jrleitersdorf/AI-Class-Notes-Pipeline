@@ -16,6 +16,15 @@ from pathlib import Path
 
 import webview
 
+from . import folder_cache as _folder_cache
+from . import mappings as _mappings
+from .folder_cache import load_folder_cache, refresh_folder_cache
+from .granola_client import GranolaClient
+from .mappings import (
+    get_api_key,
+    set_api_key,
+)
+
 
 _PACKAGE_NAME = "granola_sync"
 
@@ -45,6 +54,28 @@ class Api:
             return metadata.version(_PACKAGE_NAME)
         except metadata.PackageNotFoundError:
             return "0.0.0+unknown"
+
+    # ---------- API key ----------
+
+    def get_api_key(self) -> str | None:
+        return get_api_key(config_path=_mappings._DEFAULT_CONFIG_PATH)
+
+    def set_api_key(self, key: str) -> None:
+        set_api_key(key.strip(), config_path=_mappings._DEFAULT_CONFIG_PATH)
+
+    # ---------- Folder cache ----------
+
+    def load_cached_folders(self) -> dict:
+        return load_folder_cache(cache_path=_folder_cache._DEFAULT_CACHE_PATH)
+
+    def refresh_folders(self) -> dict:
+        key = get_api_key(config_path=_mappings._DEFAULT_CONFIG_PATH)
+        if not key:
+            raise RuntimeError("No API key configured.")
+        client = GranolaClient(key)
+        return refresh_folder_cache(
+            client, cache_path=_folder_cache._DEFAULT_CACHE_PATH
+        )
 
 
 def launch(*, dev_url: str | None = None) -> None:

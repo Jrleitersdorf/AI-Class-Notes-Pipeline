@@ -48,3 +48,49 @@ def test_find_frontend_index_editable_path_lands_inside_repo(tmp_path, monkeypat
         f"editable-install candidate resolved to {found}, "
         f"expected {frontend_index}"
     )
+
+
+# ---------------------------------------------------------------------------
+# API key
+# ---------------------------------------------------------------------------
+
+def test_set_and_get_api_key_roundtrip(api, tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH", str(cfg))
+    assert api.get_api_key() is None
+    api.set_api_key("grn_testkey")
+    assert api.get_api_key() == "grn_testkey"
+
+
+# ---------------------------------------------------------------------------
+# Folder cache
+# ---------------------------------------------------------------------------
+
+def test_load_cached_folders_empty_when_missing(api, tmp_path, monkeypatch):
+    monkeypatch.setattr("granola_sync.folder_cache._DEFAULT_CACHE_PATH",
+                        str(tmp_path / ".folders.json"))
+    result = api.load_cached_folders()
+    assert result == {"folders": [], "refreshed_at": None}
+
+
+def test_refresh_folders_calls_client_and_saves(api, tmp_path, monkeypatch):
+    cache = tmp_path / ".folders.json"
+    monkeypatch.setattr("granola_sync.folder_cache._DEFAULT_CACHE_PATH", str(cache))
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH",
+                        str(tmp_path / "config.json"))
+    api.set_api_key("grn_testkey")
+
+    folders = [{"id": "fol_x", "object": "folder", "name": "CS101"}]
+    with patch("granola_sync.app.GranolaClient") as ClientCls:
+        ClientCls.return_value.list_folders.return_value = folders
+        result = api.refresh_folders()
+
+    assert result["folders"] == folders
+    assert result["refreshed_at"] is not None
+
+
+def test_refresh_folders_no_api_key_raises(api, tmp_path, monkeypatch):
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH",
+                        str(tmp_path / "config.json"))
+    with pytest.raises(RuntimeError, match="No API key"):
+        api.refresh_folders()
