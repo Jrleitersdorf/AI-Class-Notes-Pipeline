@@ -143,3 +143,49 @@ def test_create_mapping_preserves_api_key(cfg):
     set_api_key("grn_testkey", config_path=cfg)
     create_mapping("fol_aaa", "CS101", "/tmp/a", config_path=cfg)
     assert get_api_key(config_path=cfg) == "grn_testkey"
+
+
+# ---------------------------------------------------------------------------
+# extract field (v2.1)
+# ---------------------------------------------------------------------------
+
+def test_create_mapping_defaults_extract_to_both(cfg):
+    m = create_mapping("fol_aaa", "CS101", "/tmp/notes", config_path=cfg)
+    assert m["extract"] == "both"
+
+
+def test_create_mapping_accepts_explicit_extract(cfg):
+    m = create_mapping("fol_aaa", "CS101", "/tmp/notes",
+                       extract="ai_notes", config_path=cfg)
+    assert m["extract"] == "ai_notes"
+
+
+def test_create_mapping_rejects_invalid_extract(cfg):
+    with pytest.raises(ValueError, match="extract"):
+        create_mapping("fol_aaa", "CS101", "/tmp/notes",
+                       extract="bogus", config_path=cfg)
+
+
+def test_update_mapping_can_change_extract(cfg):
+    create_mapping("fol_aaa", "CS101", "/tmp/a", config_path=cfg)
+    updated = update_mapping("fol_aaa", extract="transcript", config_path=cfg)
+    assert updated["extract"] == "transcript"
+
+
+def test_load_pre_v2_mapping_defaults_extract(cfg):
+    """Mappings written by V1 (no extract field) must load as 'both'."""
+    import json
+    with open(cfg, "w") as f:
+        json.dump({
+            "mappings": [
+                {"folder_id": "fol_old", "folder_name": "Old", "local_path": "/tmp/x"}
+            ]
+        }, f)
+    m = get_mapping("fol_old", config_path=cfg)
+    assert m["extract"] == "both"
+
+
+def test_update_mapping_rejects_invalid_extract(cfg):
+    create_mapping("fol_aaa", "CS101", "/tmp/a", config_path=cfg)
+    with pytest.raises(ValueError, match="extract"):
+        update_mapping("fol_aaa", extract="nope", config_path=cfg)

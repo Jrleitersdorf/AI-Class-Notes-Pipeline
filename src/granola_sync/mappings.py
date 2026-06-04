@@ -32,6 +32,15 @@ from typing import Any
 # src/granola_sync/ → src/ → project root → config.json
 _DEFAULT_CONFIG_PATH = str(Path(__file__).parent.parent.parent / "config.json")
 
+_VALID_EXTRACT = {"both", "ai_notes", "transcript"}
+
+
+def _normalize_mapping(m: dict) -> dict:
+    """Return a mapping dict with all v2.1 fields filled in with defaults."""
+    if "extract" not in m or m["extract"] is None:
+        m["extract"] = "both"
+    return m
+
 
 # ------------------------------------------------------------------
 # Internal helpers
@@ -70,13 +79,19 @@ def create_mapping(
     folder_name: str,
     local_path: str,
     *,
+    extract: str = "both",
     config_path: str = _DEFAULT_CONFIG_PATH,
 ) -> dict:
     """
     Add a new mapping and return it.
 
-    Raises ``ValueError`` if a mapping for ``folder_id`` already exists.
+    Raises ``ValueError`` if a mapping for ``folder_id`` already exists,
+    or if ``extract`` is not one of ``"both"`` / ``"ai_notes"`` / ``"transcript"``.
     """
+    if extract not in _VALID_EXTRACT:
+        raise ValueError(
+            f"extract must be one of {sorted(_VALID_EXTRACT)}; got {extract!r}"
+        )
     data = _load(config_path)
     if _find_index(data["mappings"], folder_id) is not None:
         raise ValueError(
@@ -87,6 +102,7 @@ def create_mapping(
         "folder_id": folder_id,
         "folder_name": folder_name,
         "local_path": str(local_path),
+        "extract": extract,
     }
     data["mappings"].append(mapping)
     _save(data, config_path)
@@ -94,17 +110,25 @@ def create_mapping(
 
 
 def list_mappings(*, config_path: str = _DEFAULT_CONFIG_PATH) -> list[dict]:
-    """Return all mappings (may be empty)."""
-    return _load(config_path)["mappings"]
+    """Return all mappings (may be empty).
+
+    Mappings are normalized at read time so V1 configs (no ``extract``
+    field) come back with the default applied. The on-disk file is not
+    rewritten — lazy migration happens only when the user explicitly
+    saves via ``create_mapping`` / ``update_mapping``.
+    """
+    data = _load(config_path)
+    return [_normalize_mapping(dict(m)) for m in data.get("mappings", [])]
 
 
 def get_mapping(
     folder_id: str, *, config_path: str = _DEFAULT_CONFIG_PATH
 ) -> dict | None:
     """Return the mapping for ``folder_id``, or ``None`` if not found."""
-    data = _load(config_path)
-    idx = _find_index(data["mappings"], folder_id)
-    return data["mappings"][idx] if idx is not None else None
+    for m in list_mappings(config_path=config_path):
+        if m["folder_id"] == folder_id:
+            return m
+    return None
 
 
 def update_mapping(
@@ -112,13 +136,19 @@ def update_mapping(
     *,
     folder_name: str | None = None,
     local_path: str | None = None,
+    extract: str | None = None,
     config_path: str = _DEFAULT_CONFIG_PATH,
 ) -> dict:
     """
-    Update one or both fields of an existing mapping and return the updated dict.
+    Update one or more fields of an existing mapping and return the updated dict.
 
-    Raises ``KeyError`` if no mapping for ``folder_id`` exists.
+    Raises ``KeyError`` if no mapping for ``folder_id`` exists, or
+    ``ValueError`` if ``extract`` is supplied but not one of the allowed values.
     """
+    if extract is not None and extract not in _VALID_EXTRACT:
+        raise ValueError(
+            f"extract must be one of {sorted(_VALID_EXTRACT)}; got {extract!r}"
+        )
     data = _load(config_path)
     idx = _find_index(data["mappings"], folder_id)
     if idx is None:
@@ -127,8 +157,10 @@ def update_mapping(
         data["mappings"][idx]["folder_name"] = folder_name
     if local_path is not None:
         data["mappings"][idx]["local_path"] = str(local_path)
+    if extract is not None:
+        data["mappings"][idx]["extract"] = extract
     _save(data, config_path)
-    return data["mappings"][idx]
+    return _normalize_mapping(dict(data["mappings"][idx]))
 
 
 def delete_mapping(
