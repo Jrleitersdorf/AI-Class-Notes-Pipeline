@@ -42,6 +42,12 @@ from .state import (
     mark_synced,
 )
 
+from .folder_cache import (
+    load_folder_cache,
+    save_folder_cache,
+    refresh_folder_cache,
+)
+
 from .sync import (
     sync_all,
     sync_folder,
@@ -68,6 +74,10 @@ __all__ = [
     "save_state",
     "is_synced",
     "mark_synced",
+    # Folder cache
+    "load_folder_cache",
+    "save_folder_cache",
+    "refresh_folder_cache",
     # Sync
     "sync_all",
     "sync_folder",
