@@ -21,8 +21,12 @@ from . import mappings as _mappings
 from .folder_cache import load_folder_cache, refresh_folder_cache
 from .granola_client import GranolaClient
 from .mappings import (
+    create_mapping,
+    delete_mapping,
     get_api_key,
+    list_mappings,
     set_api_key,
+    update_mapping,
 )
 
 
@@ -76,6 +80,54 @@ class Api:
         return refresh_folder_cache(
             client, cache_path=_folder_cache._DEFAULT_CACHE_PATH
         )
+
+    # ---------- Mappings ----------
+
+    def list_mappings(self) -> list[dict]:
+        return list_mappings(config_path=_mappings._DEFAULT_CONFIG_PATH)
+
+    def create_mapping(
+        self,
+        folder_id: str,
+        folder_name: str,
+        local_path: str,
+        extract: str = "both",
+    ) -> dict:
+        return create_mapping(
+            folder_id,
+            folder_name,
+            local_path,
+            extract=extract,
+            config_path=_mappings._DEFAULT_CONFIG_PATH,
+        )
+
+    def update_mapping(self, folder_id: str, **fields) -> dict:
+        return update_mapping(
+            folder_id,
+            config_path=_mappings._DEFAULT_CONFIG_PATH,
+            **fields,
+        )
+
+    def delete_mapping(self, folder_id: str) -> bool:
+        return delete_mapping(
+            folder_id,
+            config_path=_mappings._DEFAULT_CONFIG_PATH,
+        )
+
+    # ---------- OS folder picker ----------
+
+    def pick_folder(self, title: str = "Choose folder") -> str | None:
+        """Open the native folder picker. Returns the chosen path or None."""
+        if not webview.windows:
+            return None
+        result = webview.windows[0].create_file_dialog(
+            webview.FOLDER_DIALOG,
+            allow_multiple=False,
+        )
+        if not result:
+            return None
+        # create_file_dialog returns a tuple of strings
+        return result[0] if isinstance(result, (list, tuple)) else result
 
 
 def launch(*, dev_url: str | None = None) -> None:

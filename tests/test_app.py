@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import webview
 
 from granola_sync import app as app_module
 from granola_sync.app import Api
@@ -94,3 +95,55 @@ def test_refresh_folders_no_api_key_raises(api, tmp_path, monkeypatch):
                         str(tmp_path / "config.json"))
     with pytest.raises(RuntimeError, match="No API key"):
         api.refresh_folders()
+
+
+# ---------------------------------------------------------------------------
+# Mappings
+# ---------------------------------------------------------------------------
+
+def test_list_create_update_delete_mapping(api, tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH", str(cfg))
+
+    assert api.list_mappings() == []
+
+    m = api.create_mapping("fol_a", "CS101", str(tmp_path / "CS101"))
+    assert m["extract"] == "both"
+
+    m2 = api.update_mapping("fol_a", extract="ai_notes")
+    assert m2["extract"] == "ai_notes"
+
+    assert api.delete_mapping("fol_a") is True
+    assert api.list_mappings() == []
+
+
+def test_create_mapping_accepts_extract(api, tmp_path, monkeypatch):
+    monkeypatch.setattr("granola_sync.mappings._DEFAULT_CONFIG_PATH",
+                        str(tmp_path / "config.json"))
+    m = api.create_mapping("fol_a", "CS101", str(tmp_path / "CS101"),
+                           extract="transcript")
+    assert m["extract"] == "transcript"
+
+
+# ---------------------------------------------------------------------------
+# pick_folder
+# ---------------------------------------------------------------------------
+
+def test_pick_folder_returns_path(api):
+    fake_window = MagicMock()
+    fake_window.create_file_dialog.return_value = ("/Users/x/Notes/CS101",)
+    with patch.object(webview, "windows", [fake_window]):
+        result = api.pick_folder()
+    assert result == "/Users/x/Notes/CS101"
+
+
+def test_pick_folder_returns_none_on_cancel(api):
+    fake_window = MagicMock()
+    fake_window.create_file_dialog.return_value = None
+    with patch.object(webview, "windows", [fake_window]):
+        assert api.pick_folder() is None
+
+
+def test_pick_folder_no_window_returns_none(api):
+    with patch.object(webview, "windows", []):
+        assert api.pick_folder() is None
