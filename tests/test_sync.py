@@ -234,6 +234,36 @@ def test_note_to_markdown_null_transcript(full_note):
 
 
 # ---------------------------------------------------------------------------
+# note_to_markdown — extract field (v2.1)
+# ---------------------------------------------------------------------------
+
+def test_note_to_markdown_extract_both_default(full_note):
+    """Default behaviour is unchanged from V1 — both AI notes and transcript."""
+    md = note_to_markdown(full_note)
+    assert "## Notes" in md
+    assert "## Transcript" in md
+
+
+def test_note_to_markdown_extract_ai_notes_only(full_note):
+    md = note_to_markdown(full_note, extract="ai_notes")
+    assert "## Notes" in md
+    assert "## Transcript" not in md
+    assert "Today: recursion." not in md   # transcript text gone
+
+
+def test_note_to_markdown_extract_transcript_only(full_note):
+    md = note_to_markdown(full_note, extract="transcript")
+    assert "## Transcript" in md
+    assert "## Notes" not in md
+    assert "## Key Points" not in md   # summary headings gone
+
+
+def test_note_to_markdown_extract_invalid_raises(full_note):
+    with pytest.raises(ValueError, match="extract"):
+        note_to_markdown(full_note, extract="nonsense")
+
+
+# ---------------------------------------------------------------------------
 # _sync_one_folder — integration-style with mock client
 # ---------------------------------------------------------------------------
 

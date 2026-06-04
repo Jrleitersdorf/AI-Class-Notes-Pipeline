@@ -159,13 +159,26 @@ def _format_transcript(transcript: list[dict] | None) -> str:
         return _format_lecture(items)
 
 
-def note_to_markdown(note: dict) -> str:
+_VALID_EXTRACT = {"both", "ai_notes", "transcript"}
+
+
+def note_to_markdown(note: dict, *, extract: str = "both") -> str:
     """
-    Convert a full Granola Note object (with transcript) to a Markdown string.
+    Convert a full Granola Note object to a Markdown string.
 
     ``note`` must be the result of ``GranolaClient.get_note()`` with
     ``include_transcript=True``.
+
+    ``extract`` controls which sections appear:
+    - ``"both"`` (default) — title + metadata + AI summary + transcript
+    - ``"ai_notes"`` — title + metadata + AI summary only
+    - ``"transcript"`` — title + metadata + transcript only
     """
+    if extract not in _VALID_EXTRACT:
+        raise ValueError(
+            f"extract must be one of {sorted(_VALID_EXTRACT)}; got {extract!r}"
+        )
+
     title = note.get("title") or "Untitled"
     created_at = note.get("created_at", "")
     date_str = created_at[:10] if created_at else "unknown-date"
@@ -178,26 +191,28 @@ def note_to_markdown(note: dict) -> str:
     attendee_names = [a.get("name") or a.get("email", "") for a in attendees]
     attendees_line = ", ".join(filter(None, attendee_names)) or "—"
 
-    summary_md = (note.get("summary_markdown") or note.get("summary_text") or "").strip()
-    summary_section = summary_md if summary_md else "_No notes available._"
-    transcript_md = _format_transcript(note.get("transcript"))
-
-    return (
+    header = (
         f"# {title}\n"
         f"Date: {date_str}  \n"
         f"Folders: {folders_line}  \n"
         f"Attendees: {attendees_line}\n"
-        f"\n"
-        f"## Notes\n"
-        f"\n"
-        f"{summary_section}\n"
-        f"\n"
-        f"---\n"
-        f"\n"
-        f"## Transcript\n"
-        f"\n"
-        f"{transcript_md}\n"
     )
+
+    parts = [header]
+
+    if extract in ("both", "ai_notes"):
+        summary_md = (note.get("summary_markdown") or note.get("summary_text") or "").strip()
+        summary_section = summary_md if summary_md else "_No notes available._"
+        parts.append(f"\n## Notes\n\n{summary_section}\n")
+
+    if extract == "both":
+        parts.append("\n---\n")
+
+    if extract in ("both", "transcript"):
+        transcript_md = _format_transcript(note.get("transcript"))
+        parts.append(f"\n## Transcript\n\n{transcript_md}\n")
+
+    return "".join(parts)
 
 
 def _note_filename(note: dict) -> str:
@@ -272,6 +287,7 @@ def _sync_one_folder(
     folder_id = mapping["folder_id"]
     folder_name = mapping.get("folder_name", folder_id)
     local_path = mapping["local_path"]
+    extract = mapping.get("extract", "both")
 
     result = FolderSyncResult(
         folder_id=folder_id,
@@ -308,7 +324,7 @@ def _sync_one_folder(
                 continue
 
             full_note = client.get_note(note_id, include_transcript=True)
-            markdown = note_to_markdown(full_note)
+            markdown = note_to_markdown(full_note, extract=extract)
             filename = _note_filename(full_note)
             file_path = os.path.join(local_path, filename)
 
