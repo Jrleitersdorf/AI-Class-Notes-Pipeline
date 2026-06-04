@@ -174,62 +174,65 @@ class Api:
             raise RuntimeError("No webview window available.")
 
         def task(emit, is_cancelled=lambda: False):
+            # NOTE: No try/except here — the runner's outer handler in
+            # progress.py emits the error event with the correct sync_id.
+            # The sync_id fields below are left as "" because the closure
+            # cannot know its own sync_id (the runner generates it AFTER
+            # runner.start(task)). The frontend treats the value returned
+            # by start_sync() as the authoritative sync_id.
             t0 = time.time()
-            try:
-                if folder_id:
-                    results = sync_folder(
-                        folder_id,
-                        config_path=_mappings._DEFAULT_CONFIG_PATH,
-                        state_path=_state._DEFAULT_STATE_PATH,
-                    )
-                else:
-                    results = sync_all(
-                        config_path=_mappings._DEFAULT_CONFIG_PATH,
-                        state_path=_state._DEFAULT_STATE_PATH,
-                    )
-                if isinstance(results, list):
-                    folder_results = results
-                else:
-                    folder_results = [results]
+            if folder_id:
+                results = sync_folder(
+                    folder_id,
+                    config_path=_mappings._DEFAULT_CONFIG_PATH,
+                    state_path=_state._DEFAULT_STATE_PATH,
+                )
+            else:
+                results = sync_all(
+                    config_path=_mappings._DEFAULT_CONFIG_PATH,
+                    state_path=_state._DEFAULT_STATE_PATH,
+                )
+            if isinstance(results, list):
+                folder_results = results
+            else:
+                folder_results = [results]
 
-                written = skipped = errors = 0
-                for r in folder_results:
-                    for note in r.notes:
-                        if is_cancelled():
-                            return
-                        emit({
-                            "type": "note",
-                            "sync_id": "",   # filled in below
-                            "folder_id": r.folder_id,
-                            "status": note.status,
-                            "note_id": note.note_id,
-                            "title": note.title,
-                            "file_path": note.file_path,
-                            "error": note.error,
-                        })
+            written = skipped = errors = 0
+            for r in folder_results:
+                for note in r.notes:
+                    if is_cancelled():
+                        return
                     emit({
-                        "type": "folder_done",
+                        "type": "note",
                         "sync_id": "",
                         "folder_id": r.folder_id,
-                        "folder_name": r.folder_name,
-                        "written": r.written,
-                        "skipped": r.skipped,
-                        "errors": r.errors,
+                        "status": note.status,
+                        "note_id": note.note_id,
+                        "title": note.title,
+                        "file_path": note.file_path,
+                        "error": note.error,
                     })
-                    written += r.written
-                    skipped += r.skipped
-                    errors += r.errors
-
                 emit({
-                    "type": "done",
+                    "type": "folder_done",
                     "sync_id": "",
-                    "written": written,
-                    "skipped": skipped,
-                    "errors": errors,
-                    "elapsed_ms": int((time.time() - t0) * 1000),
+                    "folder_id": r.folder_id,
+                    "folder_name": r.folder_name,
+                    "written": r.written,
+                    "skipped": r.skipped,
+                    "errors": r.errors,
                 })
-            except Exception as exc:
-                emit({"type": "error", "sync_id": "", "message": str(exc)})
+                written += r.written
+                skipped += r.skipped
+                errors += r.errors
+
+            emit({
+                "type": "done",
+                "sync_id": "",
+                "written": written,
+                "skipped": skipped,
+                "errors": errors,
+                "elapsed_ms": int((time.time() - t0) * 1000),
+            })
 
         return runner.start(task)
 

@@ -182,6 +182,12 @@ def test_start_sync_returns_sync_id_and_streams_done(api, tmp_path, monkeypatch)
     pytest.fail("sync 'done' event was not emitted in 2s")
 
 
+def test_start_sync_no_window_raises(api):
+    with patch.object(webview, "windows", []):
+        with pytest.raises(RuntimeError, match="No webview window available"):
+            api.start_sync()
+
+
 def test_cancel_sync_returns_bool(api):
     fake_window = MagicMock()
     with patch.object(webview, "windows", [fake_window]):
