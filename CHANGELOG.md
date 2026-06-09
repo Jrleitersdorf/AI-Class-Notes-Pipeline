@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 _(no unreleased changes)_
 
+## [2.1.0] — 2026-06-03
+
+### Added
+- **New default GUI: React + PyWebView**. `python -m granola_sync` and the `granola-sync` CLI now launch a modern desktop window (Vite + React + Tailwind + shadcn-style components, Linear-style dark theme) backed by the existing `granola_sync` library via a JS↔Python bridge.
+- **First-launch wizard** — 4 steps (API key → discover folders → first mapping → done). Auto-opens when no API key is saved; re-runnable from the Setup tab.
+- **Per-mapping `extract` config** — choose Both / AI notes only / Transcript only per mapping. Defaults to "Both" for backward compat with V1 mappings.
+- **Live sync progress** streamed from Python to the frontend via `window.evaluate_js`. Cancel mid-sync.
+- **`--tkinter` flag** keeps the V1 Tkinter GUI reachable as a fallback.
+- New `Api` class (`granola_sync.app.Api`) exposes the library to JavaScript; `granola_sync.progress.SyncProgressRunner` streams threaded sync events.
+- Frontend test harness: 11 Vitest unit tests (format helper, store slices) + a Playwright E2E smoke test for the wizard happy path.
+- `Makefile` (`make dev/build/test/test-e2e`) and a GitHub Actions CI matrix (macOS + Ubuntu × Python 3.10/3.12 × Node 20).
+
+### Changed
+- Default entry point now opens pywebview instead of Tkinter. Use `--tkinter` to opt back into V1.
+- `note_to_markdown` accepts an optional `extract` kwarg; V1 callers without it are unaffected.
+
+### Fixed
+- Wizard Step 2 → Step 3 hand-off: the picked folder id was stashed via a `useEffect` that never fired (the step unmounts before the effect runs in the same batched update), leaving Step 3 unable to advance. Now written synchronously before the step transition. (Caught by the new Playwright E2E.)
+- `_find_frontend_index` editable-install path off-by-one that pointed one directory above the repo root.
+
 ## [1.2.0] — 2026-06-02
 
 ### Added
@@ -42,7 +62,8 @@ Initial release of the `granola_sync` Python package.
 - 73-test pytest suite covering all four modules.
 - Fetch full note detail to populate `folder_membership` — the `GET /v1/notes` list endpoint omits it, so `list_folders()` and `list_notes_in_folder()` fetch each note individually to discover folder membership.
 
-[Unreleased]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v2.1.0
 [1.2.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Jrleitersdorf/AI-Class-Notes-Pipeline/releases/tag/v1.0.0

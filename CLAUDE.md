@@ -12,11 +12,14 @@ src/
     __init__.py        — public API (re-exports everything)
     __main__.py        — entry point for `python -m granola_sync`
     gui.py             — optional Tkinter GUI (3 tabs: Setup, Mappings, Sync)
+    app.py             — JS↔Python bridge (Api class) for the PyWebView GUI
+    progress.py        — threaded sync runner with JS callback streaming
     granola_client.py  — Granola REST API client
     mappings.py        — CRUD for folder → local-path mappings (config.json)
     state.py           — sync state tracker (.state.json, skip unchanged notes)
     folder_cache.py    — persistent cache of discovered folders (.folders.json)
     sync.py            — sync logic: fetch → convert → write
+frontend/              — React + Vite + Tailwind GUI (V2.1); built into src/granola_sync/_frontend/
 tests/
   __init__.py          — placeholder; add test files here
 pyproject.toml         — build config + entry points
@@ -121,10 +124,12 @@ granola_sync.delete_mapping("fol_xxx")
 ## Running the GUI
 
 ```bash
-python -m granola_sync       # works immediately (no install needed)
-# or after pip install -e .:
-granola-sync
+python -m granola_sync                            # default — opens React + PyWebView
+python -m granola_sync --tkinter                  # fallback — V1 Tkinter GUI
+python -m granola_sync --frontend-url URL         # dev — load frontend from a Vite dev server
 ```
+
+The React frontend lives in `frontend/`. For development: `cd frontend && npm run dev` then `python -m granola_sync --frontend-url http://localhost:5173`. For a bundled run: `make build` (compiles the frontend into `src/granola_sync/_frontend/`) then `python -m granola_sync`.
 
 ## Setup
 

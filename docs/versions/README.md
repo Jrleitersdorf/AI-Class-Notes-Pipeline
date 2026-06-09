@@ -6,6 +6,7 @@ Status matrix — one-stop answer to "where are we?".
 |---|---|---|---|
 | v1 | **FROZEN** | [v1.md](v1.md) | 2026-04-24 (1.1.0) |
 | v2 | **IN PROGRESS** | [v2.md](v2.md) | — |
+| v2.1 | **FROZEN** | [v2.1.md](v2.1.md) | 2026-06-03 |
 
 ## Statuses
 
