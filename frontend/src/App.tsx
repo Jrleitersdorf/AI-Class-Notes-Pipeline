@@ -3,6 +3,7 @@ import { SetupTab } from "./screens/Setup";
 import { MappingsTab } from "./screens/Mappings";
 import { SyncTab } from "./screens/Sync";
 import { Wizard } from "./screens/Wizard";
+import { Toast } from "./components/Toast";
 import { useStore } from "./state";
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         {tab === "sync" && <SyncTab />}
       </TabPanels>
       <Wizard />
+      <Toast />
     </div>
   );
 }
