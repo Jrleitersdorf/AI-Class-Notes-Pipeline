@@ -14,6 +14,20 @@ window.granolaSync = {
   },
 };
 
+async function bootstrap() {
+  try {
+    const { waitForBridge } = await import("./api");
+    const api = await waitForBridge();
+    const saved = await api.get_api_key();
+    if (!saved) {
+      useStore.getState().setWizardStep(1);
+    }
+  } catch {
+    // Bridge unavailable in tests — leave wizard closed.
+  }
+}
+bootstrap();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

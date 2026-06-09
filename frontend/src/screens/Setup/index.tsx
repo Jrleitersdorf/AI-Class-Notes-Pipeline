@@ -97,6 +97,12 @@ export function SetupTab() {
           )}
         </div>
       </Card>
+      <button
+        onClick={() => useStore.getState().setWizardStep(1)}
+        className="text-muted text-[11px] hover:text-[color:var(--text)] self-start"
+      >
+        Re-run setup wizard
+      </button>
     </div>
   );
 }
