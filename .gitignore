@@ -32,3 +32,6 @@ tests/Mapping tests/
 # V2 frontend (Vite + React) — bundled output and node_modules
 frontend/node_modules/
 frontend/dist/
+
+# Built-in copy of the React bundle (populated by `make build`)
+src/granola_sync/_frontend/
