@@ -1,6 +1,7 @@
 import { TabStrip, TabPanels } from "./components/Tabs";
 import { SetupTab } from "./screens/Setup";
 import { MappingsTab } from "./screens/Mappings";
+import { SyncTab } from "./screens/Sync";
 import { useStore } from "./state";
 
 export default function App() {
@@ -11,7 +12,7 @@ export default function App() {
       <TabPanels>
         {tab === "setup" && <SetupTab />}
         {tab === "mappings" && <MappingsTab />}
-        {tab === "sync" && <p className="text-muted text-[12px]">Sync tab — coming next.</p>}
+        {tab === "sync" && <SyncTab />}
       </TabPanels>
     </div>
   );
