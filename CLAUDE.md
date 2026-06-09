@@ -2,7 +2,7 @@
 
 ## What This Project Does
 
-A modular Python package (`granola_sync`) that syncs Granola meeting notes to local Markdown files. It fetches notes from the Granola public API, combines the AI-enhanced summary with the raw transcript, and writes them as `.md` files into per-class local folders. Designed to be used as a library by other apps, with an optional Tkinter GUI.
+A modular Python package (`granola_sync`) that syncs Granola meeting notes to local Markdown files. It fetches notes from the Granola public API, combines the AI-enhanced summary with the raw transcript, and writes them as `.md` files into per-class local folders. Designed to be used as a library by other apps, with a modern React + PyWebView GUI (V2.1) and a legacy Tkinter GUI reachable via `--tkinter`.
 
 ## Architecture
 
