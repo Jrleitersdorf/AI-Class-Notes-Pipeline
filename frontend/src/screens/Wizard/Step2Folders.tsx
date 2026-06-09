@@ -7,7 +7,6 @@ export function Step2Folders() {
   const { folders, setFolders, setWizardStep, showToast } = useStore();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingFolder, setPendingFolder] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -25,15 +24,13 @@ export function Step2Folders() {
 
   function next() {
     if (!pickedId) return;
-    setPendingFolder(pickedId);
+    // Stash the picked folder for Step 3 via a global cache (avoids adding a
+    // separate slice). Step 3 reads `__wizardPickedFolderId`. Write it
+    // synchronously here — an effect would not fire because this component
+    // unmounts in the same commit as `setWizardStep(3)`.
+    (window as any).__wizardPickedFolderId = pickedId;
     setWizardStep(3);
   }
-
-  // Stash the picked folder for Step 3 via a global cache (avoids
-  // adding a separate slice). Step 3 reads `wizardPickedFolderId`.
-  useEffect(() => {
-    if (pendingFolder) (window as any).__wizardPickedFolderId = pendingFolder;
-  }, [pendingFolder]);
 
   return (
     <div className="text-center">
