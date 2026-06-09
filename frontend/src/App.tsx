@@ -2,6 +2,7 @@ import { TabStrip, TabPanels } from "./components/Tabs";
 import { SetupTab } from "./screens/Setup";
 import { MappingsTab } from "./screens/Mappings";
 import { SyncTab } from "./screens/Sync";
+import { Wizard } from "./screens/Wizard";
 import { useStore } from "./state";
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
         {tab === "mappings" && <MappingsTab />}
         {tab === "sync" && <SyncTab />}
       </TabPanels>
+      <Wizard />
     </div>
   );
 }
