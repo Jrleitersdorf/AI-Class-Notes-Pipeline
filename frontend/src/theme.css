@@ -1,0 +1,29 @@
+:root {
+  --bg: #08080a;
+  --bg-elevated: #0e0e11;
+  --surface: #141418;
+  --border: #1f1f24;
+  --border-accent: #2b2d4d;
+  --text: #e5e5e8;
+  --text-muted: #888888;
+  --text-faint: #5a5a62;
+  --accent: #5e6ad2;
+  --accent-hover: #7079e0;
+  --success: #28ca41;
+  --warning: #ffbd2e;
+  --error: #ff5f57;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-sans, Inter, -apple-system, sans-serif);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
